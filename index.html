@@ -4,51 +4,69 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#fc4c02" />
-  <title>StravaLite Offline</title>
+  <title>StravaLite Pro Offline</title>
   <style>
     :root {
       --bg: #0b0f19; --card: #151c2c; --border: #263147;
       --text: #f8fafc; --muted: #94a3b8; --accent: #fc4c02;
-      --green: #10b981; --yellow: #f59e0b; --red: #ef4444;
+      --green: #10b981; --yellow: #f59e0b; --red: #ef4444; --blue: #38bdf8;
     }
     * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); padding: 14px; padding-bottom: 44px; }
-    .container { max-width: 520px; margin: 0 auto; }
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 14px; padding-bottom: 52px; }
+    .container { max-width: 540px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 8px; }
     .brand { font-size: 20px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
-    .badge-offline { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.4); font-size: 11px; padding: 4px 8px; border-radius: 999px; font-weight: 700; }
+    .pills { display: flex; gap: 6px; align-items: center; }
+    .badge { font-size: 11px; padding: 4px 8px; border-radius: 999px; font-weight: 700; border: 1px solid transparent; }
+    .badge-offline { background: rgba(16,185,129,0.15); color: var(--green); border-color: rgba(16,185,129,0.4); }
+    .badge-autop { background: rgba(56,189,248,0.12); color: var(--blue); border-color: rgba(56,189,248,0.35); cursor: pointer; }
+    .badge-autop.off { background: rgba(148,163,184,0.12); color: var(--muted); border-color: var(--border); }
+
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
     .sport-bar { display: flex; gap: 8px; margin-bottom: 12px; }
-    .sport-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: #0b0f19; color: var(--muted); font-weight: 700; cursor: pointer; font-size: 13px; }
+    .sport-btn { flex: 1; padding: 9px 8px; border-radius: 9px; border: 1px solid var(--border); background: #0b0f19; color: var(--muted); font-weight: 700; cursor: pointer; font-size: 13px; }
     .sport-btn.active { border-color: var(--accent); color: #fff; background: rgba(252,76,2,0.18); }
-    canvas { width: 100%; height: 220px; background: #090d16; border-radius: 10px; border: 1px solid var(--border); display: block; }
+
+    canvas { width: 100%; height: 230px; background: #090d16; border-radius: 10px; border: 1px solid var(--border); display: block; }
     .gps-status { font-size: 12px; color: var(--muted); margin-top: 8px; display: flex; justify-content: space-between; gap: 8px; }
     .gps-note { font-size: 11px; color: var(--muted); margin-top: 4px; min-height: 15px; }
+
     .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
     .metric-box { background: #0b0f19; border: 1px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; }
-    .m-label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
-    .m-val { font-size: 22px; font-weight: 800; margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .m-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .m-val { font-size: 23px; font-weight: 800; margin-top: 2px; font-variant-numeric: tabular-nums; }
     .m-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
     .controls { display: flex; gap: 10px; }
     button.btn { flex: 1; padding: 13px; border: none; border-radius: 10px; font-size: 15px; font-weight: 800; cursor: pointer; }
     .btn-start { background: var(--accent); color: #fff; }
     .btn-pause { background: var(--yellow); color: #000; }
     .btn-stop { background: var(--red); color: #fff; }
-    .btn-sim { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 7px 10px; border-radius: 8px; cursor: pointer; margin-top: 8px; width: 100%; }
-    .history-item { border-bottom: 1px solid var(--border); padding: 10px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .btn-sim { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer; margin-top: 8px; width: 100%; }
+
+    .splits-box { margin-top: 12px; background: #0b0f19; border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+    .splits-title { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .split-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed #1e293b; font-variant-numeric: tabular-nums; }
+    .split-row:last-child { border-bottom: none; }
+
+    .history-item { border-bottom: 1px solid var(--border); padding: 11px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .history-item:last-child { border-bottom: none; }
     .h-title { font-weight: 700; font-size: 14px; }
     .h-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .h-actions { display: flex; gap: 6px; }
-    .btn-mini { background: #0b0f19; border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+    .h-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .btn-mini { background: #0b0f19; border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 7px; font-size: 11px; font-weight: 600; cursor: pointer; text-decoration: none; }
+    .btn-mini.map { color: var(--blue); border-color: rgba(56,189,248,0.4); }
     .btn-mini.del { color: var(--red); border-color: rgba(239,68,68,0.4); }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <div class="brand">STRAVALITE OFFLINE</div>
-      <div class="badge-offline">GPS TERKALIBRASI</div>
+      <div class="brand">STRAVALITE PRO</div>
+      <div class="pills">
+        <button class="badge badge-autop" id="btnAutoPause" onclick="toggleAutoPauseSetting()">AUTO-PAUSE: ON</button>
+        <div class="badge badge-offline">OFFLINE READY</div>
+      </div>
     </header>
 
     <div class="card">
@@ -58,12 +76,12 @@
         <button class="sport-btn" onclick="setSport('Jalan', this)">Jalan</button>
       </div>
 
-      <canvas id="routeCanvas" width="480" height="220"></canvas>
+      <canvas id="routeCanvas" width="500" height="230"></canvas>
       <div class="gps-status">
         <span id="gpsText">GPS: Siap merekam</span>
         <span id="accText">Akurasi: -</span>
       </div>
-      <div class="gps-note" id="gpsNote">Tips: tunggu akurasi ≤ 15m di ruang terbuka agar km &amp; pace stabil.</div>
+      <div class="gps-note" id="gpsNote">Tips: tunggu akurasi ≤ 15m di area terbuka agar jarak &amp; pace akurat.</div>
 
       <div class="metrics">
         <div class="metric-box">
@@ -74,7 +92,7 @@
         <div class="metric-box">
           <div class="m-label">Waktu Gerak</div>
           <div class="m-val" id="valTime">00:00:00</div>
-          <div class="m-sub" id="valTotalTime">Total: 00:00:00</div>
+          <div class="m-sub" id="valTotalTime">Elapsed: 00:00:00</div>
         </div>
         <div class="metric-box">
           <div class="m-label">Pace Rata-rata</div>
@@ -95,12 +113,20 @@
         <button class="btn btn-pause" id="btnPause" onclick="togglePause()">JEDA</button>
         <button class="btn btn-stop" onclick="stopAndSave()">SELESAI &amp; SIMPAN</button>
       </div>
-      <button class="btn-sim" id="btnSim" onclick="startTracking(true)">Uji Coba Simulasi Rute (Tanpa Keluar Rumah)</button>
+      <button class="btn-sim" id="btnSim" onclick="startTracking(true)">Simulasi Rute Uji Coba (Tanpa Keluar Rumah)</button>
+
+      <div class="splits-box">
+        <div class="splits-title">
+          <span>SPLIT PER KILOMETER</span>
+          <span id="splitCount">0 km</span>
+        </div>
+        <div id="splitsList"><div style="color:var(--muted);font-size:12px;">Split 1 km akan muncul otomatis saat jarak mencapai tiap 1.00 km.</div></div>
+      </div>
     </div>
 
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <strong style="font-size:15px;">Riwayat Aktivitas Tersimpan</strong>
+        <strong style="font-size:15px;">Riwayat Aktivitas</strong>
         <span id="totalSummary" style="font-size:12px;color:var(--muted);">0 sesi</span>
       </div>
       <div id="historyList"></div>
@@ -108,13 +134,15 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'stravalite_offline_activities_v2';
+    const STORAGE_KEY = 'stravalite_pro_activities_v3';
     const SPORT_CONFIG = {
-      Jalan:  { maxAccuracyM: 25, minStepKm: 0.004, maxSpeedKmh: 13, calPerKm: 45 },
-      Lari:   { maxAccuracyM: 22, minStepKm: 0.005, maxSpeedKmh: 26, calPerKm: 65 },
-      Sepeda: { maxAccuracyM: 25, minStepKm: 0.008, maxSpeedKmh: 65, calPerKm: 38 }
+      Jalan:  { maxAccuracyM: 22, minStepKm: 0.004, maxSpeedKmh: 12, calPerKm: 45 },
+      Lari:   { maxAccuracyM: 20, minStepKm: 0.005, maxSpeedKmh: 25, calPerKm: 65 },
+      Sepeda: { maxAccuracyM: 24, minStepKm: 0.008, maxSpeedKmh: 65, calPerKm: 38 }
     };
 
+    let autoPauseEnabled = true;
+    let autoPausedBySystem = false;
     let currentSport = 'Lari';
     let isTracking = false;
     let isPaused = false;
@@ -123,17 +151,27 @@
     let timerInterval = null;
     let simInterval = null;
 
-    let sessionStartMs = 0;
     let totalElapsedMs = 0;
     let movingElapsedMs = 0;
     let lastTickMs = 0;
     let lastMoveMs = 0;
 
     let totalDistanceKm = 0;
-    let rawPoints = [];
+    let nextSplitKm = 1.0;
+    let lastSplitMovingMs = 0;
+    let splits = [];
+
     let smoothedPoints = [];
-    let recentSegments = []; // { distKm, dtSec }
+    let recentSegments = [];
     let currentSpeedKmh = 0;
+
+    function toggleAutoPauseSetting() {
+      if (isTracking) return;
+      autoPauseEnabled = !autoPauseEnabled;
+      const btn = document.getElementById('btnAutoPause');
+      btn.textContent = `AUTO-PAUSE: ${autoPauseEnabled ? 'ON' : 'OFF'}`;
+      btn.classList.toggle('off', !autoPauseEnabled);
+    }
 
     function setSport(sport, btn) {
       if (isTracking) return;
@@ -171,25 +209,62 @@
       return `${pMin}:${String(pSec).padStart(2, '0')}`;
     }
 
+    function formatPaceFromKmAndMs(km, ms) {
+      if (!km || km <= 0 || !ms || ms <= 0) return '--:--';
+      const minPerKm = (ms / 60000) / km;
+      if (minPerKm > 45) return '--:--';
+      const pMin = Math.floor(minPerKm);
+      const pSec = Math.round((minPerKm - pMin) * 60);
+      if (pSec === 60) return `${pMin + 1}:00`;
+      return `${pMin}:${String(pSec).padStart(2, '0')}`;
+    }
+
+    function renderSplits() {
+      const container = document.getElementById('splitsList');
+      document.getElementById('splitCount').textContent = `${splits.length} km`;
+      if (!splits.length) {
+        container.innerHTML = '<div style="color:var(--muted);font-size:12px;">Split 1 km akan muncul otomatis saat jarak mencapai tiap 1.00 km.</div>';
+        return;
+      }
+      container.innerHTML = splits.map(sp => `
+        <div class="split-row">
+          <span>KM ${sp.km}</span>
+          <span>Waktu: ${formatTime(sp.lapMs)}</span>
+          <strong>Pace: ${sp.pace}/km</strong>
+        </div>
+      `).join('');
+    }
+
+    function checkAndRecordSplit() {
+      while (totalDistanceKm >= nextSplitKm) {
+        const lapMs = Math.max(1000, movingElapsedMs - lastSplitMovingMs);
+        splits.push({
+          km: nextSplitKm.toFixed(0),
+          lapMs,
+          pace: formatPaceFromKmAndMs(1, lapMs)
+        });
+        lastSplitMovingMs = movingElapsedMs;
+        nextSplitKm += 1.0;
+        renderSplits();
+      }
+    }
+
     function updateMetrics() {
       const cfg = SPORT_CONFIG[currentSport];
       document.getElementById('valDist').textContent = totalDistanceKm.toFixed(2);
       document.getElementById('valPoints').textContent = `${smoothedPoints.length} titik valid`;
       document.getElementById('valTime').textContent = formatTime(movingElapsedMs);
-      document.getElementById('valTotalTime').textContent = `Total: ${formatTime(totalElapsedMs)}`;
+      document.getElementById('valTotalTime').textContent = `Elapsed: ${formatTime(totalElapsedMs)}`;
 
-      // Pace rata-rata berdasarkan waktu gerak aktif
       const movingHours = movingElapsedMs / 3600000;
       const avgSpeedKmh = movingHours > 0.0005 ? (totalDistanceKm / movingHours) : 0;
       document.getElementById('valPace').textContent = totalDistanceKm >= 0.01 ? formatPaceFromSpeed(avgSpeedKmh) : '--:--';
 
-      // Pace saat ini berdasarkan segmen bergerak terbaru (reset jika diam > 6 detik)
       const now = Date.now();
       const activeRecentSpeed = (isTracking && !isPaused && now - lastMoveMs < 6500) ? currentSpeedKmh : 0;
       document.getElementById('valCurPace').textContent = formatPaceFromSpeed(activeRecentSpeed);
       document.getElementById('valSpeed').textContent = `${activeRecentSpeed.toFixed(1)} km/jam`;
 
-      // Estimasi kalori tersimpan saat stop
       return Math.round(totalDistanceKm * cfg.calPerKm);
     }
 
@@ -249,24 +324,22 @@
     }
 
     function addCoordinate(lat, lng, accuracy, timestampMs) {
-      if (!isTracking || isPaused) return;
+      if (!isTracking) return;
 
       const cfg = SPORT_CONFIG[currentSport];
       const accVal = typeof accuracy === 'number' && !Number.isNaN(accuracy) ? accuracy : 10;
       document.getElementById('accText').textContent = `Akurasi: ±${Math.round(accVal)}m`;
 
-      // 1. Saring akurasi GPS yang terlalu buruk
       if (!isSimMode && accVal > cfg.maxAccuracyM) {
         document.getElementById('gpsNote').textContent = `Titik diabaikan: akurasi ±${Math.round(accVal)}m (perlu ≤ ${cfg.maxAccuracyM}m).`;
         return;
       }
 
       const ptTime = timestampMs || Date.now();
-      rawPoints.push({ lat, lng, time: new Date(ptTime).toISOString(), ts: ptTime });
-
       if (smoothedPoints.length === 0) {
+        if (isPaused) return;
         smoothedPoints.push({ lat, lng, time: new Date(ptTime).toISOString(), ts: ptTime });
-        document.getElementById('gpsNote').textContent = 'Titik awal terkunci. Mulai bergerak untuk menambah jarak.';
+        document.getElementById('gpsNote').textContent = 'Titik awal terkunci. Mulai bergerak untuk merekam jarak.';
         drawRoute();
         return;
       }
@@ -276,22 +349,36 @@
       const rawDistKm = haversineKm(prev.lat, prev.lng, lat, lng);
       const speedKmh = (rawDistKm / dtSec) * 3600;
 
-      // 2. Saring loncatan GPS tidak wajar
       if (!isSimMode && speedKmh > cfg.maxSpeedKmh) {
-        document.getElementById('gpsNote').textContent = `Loncatan GPS disaring (${speedKmh.toFixed(1)} km/jam melebihi batas ${cfg.maxSpeedKmh} km/jam).`;
+        document.getElementById('gpsNote').textContent = `Loncatan GPS disaring (${speedKmh.toFixed(1)} km/jam).`;
         return;
       }
 
-      // 3. Saring pergeseran kecil (noise diam / drift)
       const effectiveMinStep = isSimMode ? 0.001 : Math.max(cfg.minStepKm, (accVal / 1000) * 0.35);
       if (rawDistKm < effectiveMinStep) {
         currentSpeedKmh = 0;
-        document.getElementById('gpsNote').textContent = 'Posisi relatif diam — jarak tidak ditambah agar tidak meleset.';
+        if (autoPauseEnabled && !isPaused && smoothedPoints.length > 1 && Date.now() - lastMoveMs > 8000) {
+          isPaused = true;
+          autoPausedBySystem = true;
+          document.getElementById('btnPause').textContent = 'LANJUT';
+          document.getElementById('gpsText').textContent = 'GPS: Auto-Pause (Diam)';
+          document.getElementById('gpsNote').textContent = 'Jeda otomatis aktif karena tidak ada pergerakan.';
+        }
         updateMetrics();
         return;
       }
 
-      // 4. Haluskan koordinat (bobot 70% titik baru, 30% titik sebelumnya)
+      // Jika bergerak kembali setelah Auto-Pause sistem, lanjutkan otomatis
+      if (isPaused && autoPausedBySystem) {
+        isPaused = false;
+        autoPausedBySystem = false;
+        lastTickMs = Date.now();
+        document.getElementById('btnPause').textContent = 'JEDA';
+        document.getElementById('gpsText').textContent = isSimMode ? 'GPS: Mode Simulasi' : 'GPS: Merekam';
+      }
+
+      if (isPaused) return;
+
       const smoothLat = prev.lat * 0.3 + lat * 0.7;
       const smoothLng = prev.lng * 0.3 + lng * 0.7;
       const smoothDistKm = haversineKm(prev.lat, prev.lng, smoothLat, smoothLng);
@@ -300,13 +387,13 @@
       totalDistanceKm += smoothDistKm;
       lastMoveMs = Date.now();
 
-      // Hitung kecepatan & pace saat ini dari rata-rata beberapa segmen terakhir
       recentSegments.push({ distKm: smoothDistKm, dtSec });
       if (recentSegments.length > 5) recentSegments.shift();
       const sumDist = recentSegments.reduce((a, b) => a + b.distKm, 0);
       const sumSec = recentSegments.reduce((a, b) => a + b.dtSec, 0);
       currentSpeedKmh = sumSec > 0 ? (sumDist / sumSec) * 3600 : 0;
 
+      checkAndRecordSplit();
       document.getElementById('gpsNote').textContent = `Titik valid (+${(smoothDistKm * 1000).toFixed(0)} m).`;
       updateMetrics();
       drawRoute();
@@ -316,19 +403,22 @@
       isSimMode = simulation;
       isTracking = true;
       isPaused = false;
+      autoPausedBySystem = false;
       totalElapsedMs = 0;
       movingElapsedMs = 0;
       totalDistanceKm = 0;
+      nextSplitKm = 1.0;
+      lastSplitMovingMs = 0;
+      splits = [];
       currentSpeedKmh = 0;
-      rawPoints = [];
       smoothedPoints = [];
       recentSegments = [];
 
       const now = Date.now();
-      sessionStartMs = now;
       lastTickMs = now;
       lastMoveMs = 0;
 
+      renderSplits();
       document.getElementById('ctrlIdle').style.display = 'none';
       document.getElementById('btnSim').style.display = 'none';
       document.getElementById('ctrlActive').style.display = 'flex';
@@ -341,9 +431,13 @@
 
         if (!isPaused) {
           totalElapsedMs += delta;
-          // Hitung waktu gerak aktif jika ada pergerakan dalam 6 detik terakhir
           if (currentNow - lastMoveMs < 6500 && smoothedPoints.length > 1) {
             movingElapsedMs += delta;
+          } else if (autoPauseEnabled && smoothedPoints.length > 1 && currentNow - lastMoveMs > 8000) {
+            isPaused = true;
+            autoPausedBySystem = true;
+            document.getElementById('btnPause').textContent = 'LANJUT';
+            document.getElementById('gpsText').textContent = 'GPS: Auto-Pause (Diam)';
           }
           updateMetrics();
         }
@@ -351,25 +445,31 @@
 
       if (simulation) {
         document.getElementById('gpsText').textContent = 'GPS: Mode Simulasi Aktif';
-        let angle = 0;
+        let step = 0;
         const baseLat = -7.4478, baseLng = 112.7183;
         simInterval = setInterval(() => {
-          if (isPaused) return;
-          angle += 0.22;
-          const lat = baseLat + Math.sin(angle) * 0.0018 + angle * 0.00015;
-          const lng = baseLng + Math.cos(angle) * 0.0018;
+          if (isPaused && !autoPausedBySystem) return;
+          step += 1;
+          // Simulasi berhenti sebentar di langkah 8-10 untuk menguji Auto-Pause
+          if (step >= 8 && step <= 10) {
+            addCoordinate(baseLat + 0.001, baseLng + 0.001, 5, Date.now());
+            return;
+          }
+          const angle = step * 0.25;
+          const lat = baseLat + Math.sin(angle) * 0.0022 + step * 0.00018;
+          const lng = baseLng + Math.cos(angle) * 0.0022 + step * 0.00012;
           addCoordinate(lat, lng, 5, Date.now());
         }, 1000);
       } else {
         if (!navigator.geolocation) {
-          alert('Browser/HP Anda tidak mendukung GPS.');
+          alert('Perangkat/browser tidak mendukung GPS.');
           stopAndSave();
           return;
         }
         document.getElementById('gpsText').textContent = 'GPS: Mencari satelit...';
         watchId = navigator.geolocation.watchPosition(
           pos => {
-            document.getElementById('gpsText').textContent = 'GPS: Terkunci (Offline)';
+            if (!isPaused) document.getElementById('gpsText').textContent = 'GPS: Terkunci (Offline)';
             addCoordinate(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, pos.timestamp);
           },
           err => {
@@ -382,12 +482,13 @@
 
     function togglePause() {
       isPaused = !isPaused;
+      autoPausedBySystem = false;
       lastTickMs = Date.now();
       const btn = document.getElementById('btnPause');
       if (isPaused) {
         btn.textContent = 'LANJUT';
         currentSpeedKmh = 0;
-        document.getElementById('gpsText').textContent = 'GPS: Dijeda';
+        document.getElementById('gpsText').textContent = 'GPS: Dijeda Manual';
         updateMetrics();
       } else {
         btn.textContent = 'JEDA';
@@ -401,6 +502,8 @@
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
 
       isTracking = false;
+      isPaused = false;
+      autoPausedBySystem = false;
       currentSpeedKmh = 0;
       const calories = updateMetrics();
 
@@ -420,11 +523,19 @@
           totalTimeText: formatTime(totalElapsedMs),
           pace: document.getElementById('valPace').textContent,
           calories,
+          splits,
           points: smoothedPoints
         });
         localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
         renderHistory();
       }
+    }
+
+    function buildMapsUrl(points) {
+      if (!points || !points.length) return '#';
+      const first = points[0];
+      const last = points[points.length - 1];
+      return `https://www.google.com/maps/dir/?api=1&origin=${first.lat},${first.lng}&destination=${last.lat},${last.lng}&travelmode=walking`;
     }
 
     function exportGPX(id) {
@@ -434,7 +545,7 @@
 
       const trkpts = act.points.map(p => `<trkpt lat="${p.lat}" lon="${p.lng}"><time>${p.time}</time></trkpt>`).join('\n');
       const gpx = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="StravaLite Offline">
+<gpx version="1.1" creator="StravaLite Pro Offline">
   <trk><name>${act.sport} - ${act.date}</name><trkseg>\n${trkpts}\n</trkseg></trk>
 </gpx>`;
 
@@ -459,25 +570,33 @@
 
       const container = document.getElementById('historyList');
       if (!list.length) {
-        container.innerHTML = '<div style="color:var(--muted);font-size:13px;">Belum ada aktivitas tersimpan di HP ini.</div>';
+        container.innerHTML = '<div style="color:var(--muted);font-size:13px;">Belum ada aktivitas tersimpan.</div>';
         return;
       }
 
-      container.innerHTML = list.map(a => `
-        <div class="history-item">
-          <div>
-            <div class="h-title">${a.sport} • ${a.distanceKm.toFixed(2)} km</div>
-            <div class="h-sub">${a.date} • Gerak ${a.movingTimeText} • Pace ${a.pace}/km • ${a.calories} kkal</div>
+      container.innerHTML = list.map(a => {
+        const hasPts = a.points && a.points.length > 0;
+        const mapBtn = hasPts
+          ? `<a class="btn-mini map" href="${buildMapsUrl(a.points)}" target="_blank" rel="noopener">Maps</a>`
+          : '';
+        return `
+          <div class="history-item">
+            <div>
+              <div class="h-title">${a.sport} • ${a.distanceKm.toFixed(2)} km</div>
+              <div class="h-sub">${a.date} • Gerak ${a.movingTimeText} • Pace ${a.pace}/km • ${a.calories} kkal</div>
+            </div>
+            <div class="h-actions">
+              ${mapBtn}
+              <button class="btn-mini" onclick="exportGPX('${a.id}')">GPX</button>
+              <button class="btn-mini del" onclick="deleteAct('${a.id}')">Hapus</button>
+            </div>
           </div>
-          <div class="h-actions">
-            <button class="btn-mini" onclick="exportGPX('${a.id}')">GPX</button>
-            <button class="btn-mini del" onclick="deleteAct('${a.id}')">Hapus</button>
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     drawRoute();
+    renderSplits();
     renderHistory();
   </script>
 </body>
