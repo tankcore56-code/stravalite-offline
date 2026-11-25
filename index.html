@@ -9,10 +9,10 @@
     :root {
       --bg: #0b0f19; --card: #151c2c; --border: #263147;
       --text: #f8fafc; --muted: #94a3b8; --accent: #fc4c02;
-      --green: #10b981; --red: #ef4444;
+      --green: #10b981; --yellow: #f59e0b; --red: #ef4444;
     }
     * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); padding: 14px; padding-bottom: 40px; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 14px; padding-bottom: 44px; }
     .container { max-width: 520px; margin: 0 auto; }
     header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
     .brand { font-size: 20px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
@@ -22,17 +22,19 @@
     .sport-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: #0b0f19; color: var(--muted); font-weight: 700; cursor: pointer; font-size: 13px; }
     .sport-btn.active { border-color: var(--accent); color: #fff; background: rgba(252,76,2,0.18); }
     canvas { width: 100%; height: 220px; background: #090d16; border-radius: 10px; border: 1px solid var(--border); display: block; }
-    .gps-status { font-size: 12px; color: var(--muted); margin-top: 8px; display: flex; justify-content: space-between; }
+    .gps-status { font-size: 12px; color: var(--muted); margin-top: 8px; display: flex; justify-content: space-between; gap: 8px; }
+    .gps-note { font-size: 11px; color: var(--muted); margin-top: 4px; min-height: 15px; }
     .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
     .metric-box { background: #0b0f19; border: 1px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; }
     .m-label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
     .m-val { font-size: 22px; font-weight: 800; margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .m-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .controls { display: flex; gap: 10px; }
     button.btn { flex: 1; padding: 13px; border: none; border-radius: 10px; font-size: 15px; font-weight: 800; cursor: pointer; }
     .btn-start { background: var(--accent); color: #fff; }
-    .btn-pause { background: #f59e0b; color: #000; }
+    .btn-pause { background: var(--yellow); color: #000; }
     .btn-stop { background: var(--red); color: #fff; }
-    .btn-sim { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 6px 10px; border-radius: 8px; cursor: pointer; margin-top: 8px; width: 100%; }
+    .btn-sim { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 7px 10px; border-radius: 8px; cursor: pointer; margin-top: 8px; width: 100%; }
     .history-item { border-bottom: 1px solid var(--border); padding: 10px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .history-item:last-child { border-bottom: none; }
     .h-title { font-weight: 700; font-size: 14px; }
@@ -46,7 +48,7 @@
   <div class="container">
     <header>
       <div class="brand">STRAVALITE OFFLINE</div>
-      <div class="badge-offline">100% OFFLINE GPS</div>
+      <div class="badge-offline">GPS TERKALIBRASI</div>
     </header>
 
     <div class="card">
@@ -61,23 +63,28 @@
         <span id="gpsText">GPS: Siap merekam</span>
         <span id="accText">Akurasi: -</span>
       </div>
+      <div class="gps-note" id="gpsNote">Tips: tunggu akurasi ≤ 15m di ruang terbuka agar km &amp; pace stabil.</div>
 
       <div class="metrics">
         <div class="metric-box">
           <div class="m-label">Jarak (KM)</div>
           <div class="m-val" id="valDist">0.00</div>
+          <div class="m-sub" id="valPoints">0 titik valid</div>
         </div>
         <div class="metric-box">
-          <div class="m-label">Waktu</div>
+          <div class="m-label">Waktu Gerak</div>
           <div class="m-val" id="valTime">00:00:00</div>
+          <div class="m-sub" id="valTotalTime">Total: 00:00:00</div>
         </div>
         <div class="metric-box">
-          <div class="m-label">Pace (Min/KM)</div>
+          <div class="m-label">Pace Rata-rata</div>
           <div class="m-val" id="valPace">--:--</div>
+          <div class="m-sub">menit / km</div>
         </div>
         <div class="metric-box">
-          <div class="m-label">Kalori (Kkal)</div>
-          <div class="m-val" id="valCal">0</div>
+          <div class="m-label">Pace Saat Ini</div>
+          <div class="m-val" id="valCurPace">--:--</div>
+          <div class="m-sub" id="valSpeed">0.0 km/jam</div>
         </div>
       </div>
 
@@ -101,7 +108,13 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'stravalite_offline_activities_v1';
+    const STORAGE_KEY = 'stravalite_offline_activities_v2';
+    const SPORT_CONFIG = {
+      Jalan:  { maxAccuracyM: 25, minStepKm: 0.004, maxSpeedKmh: 13, calPerKm: 45 },
+      Lari:   { maxAccuracyM: 22, minStepKm: 0.005, maxSpeedKmh: 26, calPerKm: 65 },
+      Sepeda: { maxAccuracyM: 25, minStepKm: 0.008, maxSpeedKmh: 65, calPerKm: 38 }
+    };
+
     let currentSport = 'Lari';
     let isTracking = false;
     let isPaused = false;
@@ -110,19 +123,26 @@
     let timerInterval = null;
     let simInterval = null;
 
-    let startTime = 0;
-    let elapsedMs = 0;
+    let sessionStartMs = 0;
+    let totalElapsedMs = 0;
+    let movingElapsedMs = 0;
+    let lastTickMs = 0;
+    let lastMoveMs = 0;
+
     let totalDistanceKm = 0;
-    let trackPoints = []; // { lat, lng, time }
+    let rawPoints = [];
+    let smoothedPoints = [];
+    let recentSegments = []; // { distKm, dtSec }
+    let currentSpeedKmh = 0;
 
     function setSport(sport, btn) {
       if (isTracking) return;
       currentSport = sport;
       document.querySelectorAll('.sport-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      updateMetrics();
     }
 
-    // Rumus Haversine untuk hitung jarak antar koordinat GPS (KM)
     function haversineKm(lat1, lon1, lat2, lon2) {
       const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -134,31 +154,43 @@
     }
 
     function formatTime(ms) {
-      const totalSec = Math.floor(ms / 1000);
+      const totalSec = Math.max(0, Math.floor(ms / 1000));
       const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
       const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
       const s = String(totalSec % 60).padStart(2, '0');
       return `${h}:${m}:${s}`;
     }
 
+    function formatPaceFromSpeed(speedKmh) {
+      if (!speedKmh || speedKmh < 0.8) return '--:--';
+      const paceMinPerKm = 60 / speedKmh;
+      if (paceMinPerKm > 45) return '--:--';
+      const pMin = Math.floor(paceMinPerKm);
+      const pSec = Math.round((paceMinPerKm - pMin) * 60);
+      if (pSec === 60) return `${pMin + 1}:00`;
+      return `${pMin}:${String(pSec).padStart(2, '0')}`;
+    }
+
     function updateMetrics() {
+      const cfg = SPORT_CONFIG[currentSport];
       document.getElementById('valDist').textContent = totalDistanceKm.toFixed(2);
-      document.getElementById('valTime').textContent = formatTime(elapsedMs);
+      document.getElementById('valPoints').textContent = `${smoothedPoints.length} titik valid`;
+      document.getElementById('valTime').textContent = formatTime(movingElapsedMs);
+      document.getElementById('valTotalTime').textContent = `Total: ${formatTime(totalElapsedMs)}`;
 
-      // Hitung Pace (menit per km)
-      if (totalDistanceKm >= 0.02) {
-        const totalMin = (elapsedMs / 1000) / 60;
-        const paceDec = totalMin / totalDistanceKm;
-        const pMin = Math.floor(paceDec);
-        const pSec = String(Math.round((paceDec - pMin) * 60)).padStart(2, '0');
-        document.getElementById('valPace').textContent = `${pMin}:${pSec}`;
-      } else {
-        document.getElementById('valPace').textContent = '--:--';
-      }
+      // Pace rata-rata berdasarkan waktu gerak aktif
+      const movingHours = movingElapsedMs / 3600000;
+      const avgSpeedKmh = movingHours > 0.0005 ? (totalDistanceKm / movingHours) : 0;
+      document.getElementById('valPace').textContent = totalDistanceKm >= 0.01 ? formatPaceFromSpeed(avgSpeedKmh) : '--:--';
 
-      // Estimasi Kalori berdasarkan jenis olahraga
-      const calFactor = currentSport === 'Lari' ? 65 : currentSport === 'Sepeda' ? 40 : 45;
-      document.getElementById('valCal').textContent = Math.round(totalDistanceKm * calFactor);
+      // Pace saat ini berdasarkan segmen bergerak terbaru (reset jika diam > 6 detik)
+      const now = Date.now();
+      const activeRecentSpeed = (isTracking && !isPaused && now - lastMoveMs < 6500) ? currentSpeedKmh : 0;
+      document.getElementById('valCurPace').textContent = formatPaceFromSpeed(activeRecentSpeed);
+      document.getElementById('valSpeed').textContent = `${activeRecentSpeed.toFixed(1)} km/jam`;
+
+      // Estimasi kalori tersimpan saat stop
+      return Math.round(totalDistanceKm * cfg.calPerKm);
     }
 
     function drawRoute() {
@@ -166,30 +198,29 @@
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Grid latar
       ctx.strokeStyle = '#162033';
       ctx.lineWidth = 1;
       for (let x = 0; x < canvas.width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
       for (let y = 0; y < canvas.height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
 
-      if (trackPoints.length === 0) {
+      if (smoothedPoints.length === 0) {
         ctx.fillStyle = '#64748b';
         ctx.font = '13px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Jalur rute GPS akan tergambar otomatis di sini', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('Jalur rute GPS valid akan tergambar di sini', canvas.width / 2, canvas.height / 2);
         return;
       }
 
-      const lats = trackPoints.map(p => p.lat);
-      const lngs = trackPoints.map(p => p.lng);
+      const lats = smoothedPoints.map(p => p.lat);
+      const lngs = smoothedPoints.map(p => p.lng);
       const minLat = Math.min(...lats), maxLat = Math.max(...lats);
       const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
 
       const pad = 28;
       const w = canvas.width - pad * 2;
       const h = canvas.height - pad * 2;
-      const spanLat = Math.max(maxLat - minLat, 0.0005);
-      const spanLng = Math.max(maxLng - minLng, 0.0005);
+      const spanLat = Math.max(maxLat - minLat, 0.0004);
+      const spanLng = Math.max(maxLng - minLng, 0.0004);
 
       const toXY = (p) => ({
         x: pad + ((p.lng - minLng) / spanLng) * w,
@@ -201,36 +232,82 @@
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.beginPath();
-      trackPoints.forEach((p, idx) => {
+      smoothedPoints.forEach((p, idx) => {
         const pt = toXY(p);
         if (idx === 0) ctx.moveTo(pt.x, pt.y);
         else ctx.lineTo(pt.x, pt.y);
       });
       ctx.stroke();
 
-      // Titik Start (Hijau) & Posisi Terkini (Putih)
-      const startPt = toXY(trackPoints[0]);
+      const startPt = toXY(smoothedPoints[0]);
       ctx.fillStyle = '#10b981';
       ctx.beginPath(); ctx.arc(startPt.x, startPt.y, 6, 0, Math.PI * 2); ctx.fill();
 
-      const endPt = toXY(trackPoints[trackPoints.length - 1]);
+      const endPt = toXY(smoothedPoints[smoothedPoints.length - 1]);
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.arc(endPt.x, endPt.y, 5, 0, Math.PI * 2); ctx.fill();
     }
 
-    function addCoordinate(lat, lng, accuracy) {
+    function addCoordinate(lat, lng, accuracy, timestampMs) {
       if (!isTracking || isPaused) return;
-      document.getElementById('accText').textContent = `Akurasi: ±${Math.round(accuracy || 5)}m`;
 
-      if (trackPoints.length > 0) {
-        const prev = trackPoints[trackPoints.length - 1];
-        const dist = haversineKm(prev.lat, prev.lng, lat, lng);
-        // Filter noise GPS kecil (< 3 meter)
-        if (dist < 0.003 && !isSimMode) return;
-        totalDistanceKm += dist;
+      const cfg = SPORT_CONFIG[currentSport];
+      const accVal = typeof accuracy === 'number' && !Number.isNaN(accuracy) ? accuracy : 10;
+      document.getElementById('accText').textContent = `Akurasi: ±${Math.round(accVal)}m`;
+
+      // 1. Saring akurasi GPS yang terlalu buruk
+      if (!isSimMode && accVal > cfg.maxAccuracyM) {
+        document.getElementById('gpsNote').textContent = `Titik diabaikan: akurasi ±${Math.round(accVal)}m (perlu ≤ ${cfg.maxAccuracyM}m).`;
+        return;
       }
 
-      trackPoints.push({ lat, lng, time: new Date().toISOString() });
+      const ptTime = timestampMs || Date.now();
+      rawPoints.push({ lat, lng, time: new Date(ptTime).toISOString(), ts: ptTime });
+
+      if (smoothedPoints.length === 0) {
+        smoothedPoints.push({ lat, lng, time: new Date(ptTime).toISOString(), ts: ptTime });
+        document.getElementById('gpsNote').textContent = 'Titik awal terkunci. Mulai bergerak untuk menambah jarak.';
+        drawRoute();
+        return;
+      }
+
+      const prev = smoothedPoints[smoothedPoints.length - 1];
+      const dtSec = Math.max((ptTime - prev.ts) / 1000, 0.25);
+      const rawDistKm = haversineKm(prev.lat, prev.lng, lat, lng);
+      const speedKmh = (rawDistKm / dtSec) * 3600;
+
+      // 2. Saring loncatan GPS tidak wajar
+      if (!isSimMode && speedKmh > cfg.maxSpeedKmh) {
+        document.getElementById('gpsNote').textContent = `Loncatan GPS disaring (${speedKmh.toFixed(1)} km/jam melebihi batas ${cfg.maxSpeedKmh} km/jam).`;
+        return;
+      }
+
+      // 3. Saring pergeseran kecil (noise diam / drift)
+      const effectiveMinStep = isSimMode ? 0.001 : Math.max(cfg.minStepKm, (accVal / 1000) * 0.35);
+      if (rawDistKm < effectiveMinStep) {
+        currentSpeedKmh = 0;
+        document.getElementById('gpsNote').textContent = 'Posisi relatif diam — jarak tidak ditambah agar tidak meleset.';
+        updateMetrics();
+        return;
+      }
+
+      // 4. Haluskan koordinat (bobot 70% titik baru, 30% titik sebelumnya)
+      const smoothLat = prev.lat * 0.3 + lat * 0.7;
+      const smoothLng = prev.lng * 0.3 + lng * 0.7;
+      const smoothDistKm = haversineKm(prev.lat, prev.lng, smoothLat, smoothLng);
+
+      smoothedPoints.push({ lat: smoothLat, lng: smoothLng, time: new Date(ptTime).toISOString(), ts: ptTime });
+      totalDistanceKm += smoothDistKm;
+      lastMoveMs = Date.now();
+
+      // Hitung kecepatan & pace saat ini dari rata-rata beberapa segmen terakhir
+      recentSegments.push({ distKm: smoothDistKm, dtSec });
+      if (recentSegments.length > 5) recentSegments.shift();
+      const sumDist = recentSegments.reduce((a, b) => a + b.distKm, 0);
+      const sumSec = recentSegments.reduce((a, b) => a + b.dtSec, 0);
+      currentSpeedKmh = sumSec > 0 ? (sumDist / sumSec) * 3600 : 0;
+
+      document.getElementById('gpsNote').textContent = `Titik valid (+${(smoothDistKm * 1000).toFixed(0)} m).`;
       updateMetrics();
       drawRoute();
     }
@@ -239,10 +316,18 @@
       isSimMode = simulation;
       isTracking = true;
       isPaused = false;
-      elapsedMs = 0;
+      totalElapsedMs = 0;
+      movingElapsedMs = 0;
       totalDistanceKm = 0;
-      trackPoints = [];
-      startTime = Date.now();
+      currentSpeedKmh = 0;
+      rawPoints = [];
+      smoothedPoints = [];
+      recentSegments = [];
+
+      const now = Date.now();
+      sessionStartMs = now;
+      lastTickMs = now;
+      lastMoveMs = 0;
 
       document.getElementById('ctrlIdle').style.display = 'none';
       document.getElementById('btnSim').style.display = 'none';
@@ -250,22 +335,30 @@
       document.getElementById('btnPause').textContent = 'JEDA';
 
       timerInterval = setInterval(() => {
+        const currentNow = Date.now();
+        const delta = currentNow - lastTickMs;
+        lastTickMs = currentNow;
+
         if (!isPaused) {
-          elapsedMs = Date.now() - startTime;
+          totalElapsedMs += delta;
+          // Hitung waktu gerak aktif jika ada pergerakan dalam 6 detik terakhir
+          if (currentNow - lastMoveMs < 6500 && smoothedPoints.length > 1) {
+            movingElapsedMs += delta;
+          }
           updateMetrics();
         }
-      }, 1000);
+      }, 500);
 
       if (simulation) {
         document.getElementById('gpsText').textContent = 'GPS: Mode Simulasi Aktif';
         let angle = 0;
-        const baseLat = -7.4478, baseLng = 112.7183; // Koordinat contoh Sidoarjo
+        const baseLat = -7.4478, baseLng = 112.7183;
         simInterval = setInterval(() => {
           if (isPaused) return;
-          angle += 0.25;
-          const lat = baseLat + Math.sin(angle) * 0.002 + angle * 0.0001;
-          const lng = baseLng + Math.cos(angle) * 0.002;
-          addCoordinate(lat, lng, 4);
+          angle += 0.22;
+          const lat = baseLat + Math.sin(angle) * 0.0018 + angle * 0.00015;
+          const lng = baseLng + Math.cos(angle) * 0.0018;
+          addCoordinate(lat, lng, 5, Date.now());
         }, 1000);
       } else {
         if (!navigator.geolocation) {
@@ -277,24 +370,26 @@
         watchId = navigator.geolocation.watchPosition(
           pos => {
             document.getElementById('gpsText').textContent = 'GPS: Terkunci (Offline)';
-            addCoordinate(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+            addCoordinate(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, pos.timestamp);
           },
           err => {
             document.getElementById('gpsText').textContent = 'GPS Error: ' + err.message;
           },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 }
         );
       }
     }
 
     function togglePause() {
       isPaused = !isPaused;
+      lastTickMs = Date.now();
       const btn = document.getElementById('btnPause');
       if (isPaused) {
         btn.textContent = 'LANJUT';
+        currentSpeedKmh = 0;
         document.getElementById('gpsText').textContent = 'GPS: Dijeda';
+        updateMetrics();
       } else {
-        startTime = Date.now() - elapsedMs;
         btn.textContent = 'JEDA';
         document.getElementById('gpsText').textContent = isSimMode ? 'GPS: Mode Simulasi' : 'GPS: Merekam';
       }
@@ -306,22 +401,26 @@
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
 
       isTracking = false;
+      currentSpeedKmh = 0;
+      const calories = updateMetrics();
+
       document.getElementById('ctrlIdle').style.display = 'flex';
       document.getElementById('btnSim').style.display = 'block';
       document.getElementById('ctrlActive').style.display = 'none';
       document.getElementById('gpsText').textContent = 'GPS: Selesai';
 
-      if (trackPoints.length > 0 || elapsedMs > 3000) {
+      if (smoothedPoints.length > 0 || totalElapsedMs > 3000) {
         const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         list.unshift({
           id: 'ACT-' + Date.now(),
           date: new Date().toLocaleString('id-ID'),
           sport: currentSport,
           distanceKm: Number(totalDistanceKm.toFixed(2)),
-          durationText: formatTime(elapsedMs),
+          movingTimeText: formatTime(movingElapsedMs),
+          totalTimeText: formatTime(totalElapsedMs),
           pace: document.getElementById('valPace').textContent,
-          calories: Number(document.getElementById('valCal').textContent),
-          points: trackPoints
+          calories,
+          points: smoothedPoints
         });
         localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
         renderHistory();
@@ -367,8 +466,8 @@
       container.innerHTML = list.map(a => `
         <div class="history-item">
           <div>
-            <div class="h-title">${a.sport} • ${a.distanceKm} km</div>
-            <div class="h-sub">${a.date} • Waktu ${a.durationText} • Pace ${a.pace}/km • ${a.calories} kkal</div>
+            <div class="h-title">${a.sport} • ${a.distanceKm.toFixed(2)} km</div>
+            <div class="h-sub">${a.date} • Gerak ${a.movingTimeText} • Pace ${a.pace}/km • ${a.calories} kkal</div>
           </div>
           <div class="h-actions">
             <button class="btn-mini" onclick="exportGPX('${a.id}')">GPX</button>
