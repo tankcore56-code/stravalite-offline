@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#fc4c02" />
+  <title>StravaLite Offline</title>
+  <style>
+    :root {
+      --bg: #0b0f19; --card: #151c2c; --border: #263147;
+      --text: #f8fafc; --muted: #94a3b8; --accent: #fc4c02;
+      --green: #10b981; --red: #ef4444;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 14px; padding-bottom: 40px; }
+    .container { max-width: 520px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .brand { font-size: 20px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+    .badge-offline { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.4); font-size: 11px; padding: 4px 8px; border-radius: 999px; font-weight: 700; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+    .sport-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+    .sport-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: #0b0f19; color: var(--muted); font-weight: 700; cursor: pointer; font-size: 13px; }
+    .sport-btn.active { border-color: var(--accent); color: #fff; background: rgba(252,76,2,0.18); }
+    canvas { width: 100%; height: 220px; background: #090d16; border-radius: 10px; border: 1px solid var(--border); display: block; }
+    .gps-status { font-size: 12px; color: var(--muted); margin-top: 8px; display: flex; justify-content: space-between; }
+    .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
+    .metric-box { background: #0b0f19; border: 1px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; }
+    .m-label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    .m-val { font-size: 22px; font-weight: 800; margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .controls { display: flex; gap: 10px; }
+    button.btn { flex: 1; padding: 13px; border: none; border-radius: 10px; font-size: 15px; font-weight: 800; cursor: pointer; }
+    .btn-start { background: var(--accent); color: #fff; }
+    .btn-pause { background: #f59e0b; color: #000; }
+    .btn-stop { background: var(--red); color: #fff; }
+    .btn-sim { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 6px 10px; border-radius: 8px; cursor: pointer; margin-top: 8px; width: 100%; }
+    .history-item { border-bottom: 1px solid var(--border); padding: 10px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .history-item:last-child { border-bottom: none; }
+    .h-title { font-weight: 700; font-size: 14px; }
+    .h-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .h-actions { display: flex; gap: 6px; }
+    .btn-mini { background: #0b0f19; border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+    .btn-mini.del { color: var(--red); border-color: rgba(239,68,68,0.4); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">STRAVALITE OFFLINE</div>
+      <div class="badge-offline">100% OFFLINE GPS</div>
+    </header>
+
+    <div class="card">
+      <div class="sport-bar">
+        <button class="sport-btn active" onclick="setSport('Lari', this)">Lari</button>
+        <button class="sport-btn" onclick="setSport('Sepeda', this)">Sepeda</button>
+        <button class="sport-btn" onclick="setSport('Jalan', this)">Jalan</button>
+      </div>
+
+      <canvas id="routeCanvas" width="480" height="220"></canvas>
+      <div class="gps-status">
+        <span id="gpsText">GPS: Siap merekam</span>
+        <span id="accText">Akurasi: -</span>
+      </div>
+
+      <div class="metrics">
+        <div class="metric-box">
+          <div class="m-label">Jarak (KM)</div>
+          <div class="m-val" id="valDist">0.00</div>
+        </div>
+        <div class="metric-box">
+          <div class="m-label">Waktu</div>
+          <div class="m-val" id="valTime">00:00:00</div>
+        </div>
+        <div class="metric-box">
+          <div class="m-label">Pace (Min/KM)</div>
+          <div class="m-val" id="valPace">--:--</div>
+        </div>
+        <div class="metric-box">
+          <div class="m-label">Kalori (Kkal)</div>
+          <div class="m-val" id="valCal">0</div>
+        </div>
+      </div>
+
+      <div class="controls" id="ctrlIdle">
+        <button class="btn btn-start" onclick="startTracking(false)">MULAI REKAM GPS</button>
+      </div>
+      <div class="controls" id="ctrlActive" style="display:none;">
+        <button class="btn btn-pause" id="btnPause" onclick="togglePause()">JEDA</button>
+        <button class="btn btn-stop" onclick="stopAndSave()">SELESAI &amp; SIMPAN</button>
+      </div>
+      <button class="btn-sim" id="btnSim" onclick="startTracking(true)">Uji Coba Simulasi Rute (Tanpa Keluar Rumah)</button>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <strong style="font-size:15px;">Riwayat Aktivitas Tersimpan</strong>
+        <span id="totalSummary" style="font-size:12px;color:var(--muted);">0 sesi</span>
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'stravalite_offline_activities_v1';
+    let currentSport = 'Lari';
+    let isTracking = false;
+    let isPaused = false;
+    let isSimMode = false;
+    let watchId = null;
+    let timerInterval = null;
+    let simInterval = null;
+
+    let startTime = 0;
+    let elapsedMs = 0;
+    let totalDistanceKm = 0;
+    let trackPoints = []; // { lat, lng, time }
+
+    function setSport(sport, btn) {
+      if (isTracking) return;
+      currentSport = sport;
+      document.querySelectorAll('.sport-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    // Rumus Haversine untuk hitung jarak antar koordinat GPS (KM)
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function formatTime(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+      const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+      const s = String(totalSec % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function updateMetrics() {
+      document.getElementById('valDist').textContent = totalDistanceKm.toFixed(2);
+      document.getElementById('valTime').textContent = formatTime(elapsedMs);
+
+      // Hitung Pace (menit per km)
+      if (totalDistanceKm >= 0.02) {
+        const totalMin = (elapsedMs / 1000) / 60;
+        const paceDec = totalMin / totalDistanceKm;
+        const pMin = Math.floor(paceDec);
+        const pSec = String(Math.round((paceDec - pMin) * 60)).padStart(2, '0');
+        document.getElementById('valPace').textContent = `${pMin}:${pSec}`;
+      } else {
+        document.getElementById('valPace').textContent = '--:--';
+      }
+
+      // Estimasi Kalori berdasarkan jenis olahraga
+      const calFactor = currentSport === 'Lari' ? 65 : currentSport === 'Sepeda' ? 40 : 45;
+      document.getElementById('valCal').textContent = Math.round(totalDistanceKm * calFactor);
+    }
+
+    function drawRoute() {
+      const canvas = document.getElementById('routeCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Grid latar
+      ctx.strokeStyle = '#162033';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+      for (let y = 0; y < canvas.height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+
+      if (trackPoints.length === 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Jalur rute GPS akan tergambar otomatis di sini', canvas.width / 2, canvas.height / 2);
+        return;
+      }
+
+      const lats = trackPoints.map(p => p.lat);
+      const lngs = trackPoints.map(p => p.lng);
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+
+      const pad = 28;
+      const w = canvas.width - pad * 2;
+      const h = canvas.height - pad * 2;
+      const spanLat = Math.max(maxLat - minLat, 0.0005);
+      const spanLng = Math.max(maxLng - minLng, 0.0005);
+
+      const toXY = (p) => ({
+        x: pad + ((p.lng - minLng) / spanLng) * w,
+        y: canvas.height - pad - ((p.lat - minLat) / spanLat) * h
+      });
+
+      ctx.strokeStyle = '#fc4c02';
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      trackPoints.forEach((p, idx) => {
+        const pt = toXY(p);
+        if (idx === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.stroke();
+
+      // Titik Start (Hijau) & Posisi Terkini (Putih)
+      const startPt = toXY(trackPoints[0]);
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath(); ctx.arc(startPt.x, startPt.y, 6, 0, Math.PI * 2); ctx.fill();
+
+      const endPt = toXY(trackPoints[trackPoints.length - 1]);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(endPt.x, endPt.y, 5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function addCoordinate(lat, lng, accuracy) {
+      if (!isTracking || isPaused) return;
+      document.getElementById('accText').textContent = `Akurasi: ±${Math.round(accuracy || 5)}m`;
+
+      if (trackPoints.length > 0) {
+        const prev = trackPoints[trackPoints.length - 1];
+        const dist = haversineKm(prev.lat, prev.lng, lat, lng);
+        // Filter noise GPS kecil (< 3 meter)
+        if (dist < 0.003 && !isSimMode) return;
+        totalDistanceKm += dist;
+      }
+
+      trackPoints.push({ lat, lng, time: new Date().toISOString() });
+      updateMetrics();
+      drawRoute();
+    }
+
+    function startTracking(simulation) {
+      isSimMode = simulation;
+      isTracking = true;
+      isPaused = false;
+      elapsedMs = 0;
+      totalDistanceKm = 0;
+      trackPoints = [];
+      startTime = Date.now();
+
+      document.getElementById('ctrlIdle').style.display = 'none';
+      document.getElementById('btnSim').style.display = 'none';
+      document.getElementById('ctrlActive').style.display = 'flex';
+      document.getElementById('btnPause').textContent = 'JEDA';
+
+      timerInterval = setInterval(() => {
+        if (!isPaused) {
+          elapsedMs = Date.now() - startTime;
+          updateMetrics();
+        }
+      }, 1000);
+
+      if (simulation) {
+        document.getElementById('gpsText').textContent = 'GPS: Mode Simulasi Aktif';
+        let angle = 0;
+        const baseLat = -7.4478, baseLng = 112.7183; // Koordinat contoh Sidoarjo
+        simInterval = setInterval(() => {
+          if (isPaused) return;
+          angle += 0.25;
+          const lat = baseLat + Math.sin(angle) * 0.002 + angle * 0.0001;
+          const lng = baseLng + Math.cos(angle) * 0.002;
+          addCoordinate(lat, lng, 4);
+        }, 1000);
+      } else {
+        if (!navigator.geolocation) {
+          alert('Browser/HP Anda tidak mendukung GPS.');
+          stopAndSave();
+          return;
+        }
+        document.getElementById('gpsText').textContent = 'GPS: Mencari satelit...';
+        watchId = navigator.geolocation.watchPosition(
+          pos => {
+            document.getElementById('gpsText').textContent = 'GPS: Terkunci (Offline)';
+            addCoordinate(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+          },
+          err => {
+            document.getElementById('gpsText').textContent = 'GPS Error: ' + err.message;
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+        );
+      }
+    }
+
+    function togglePause() {
+      isPaused = !isPaused;
+      const btn = document.getElementById('btnPause');
+      if (isPaused) {
+        btn.textContent = 'LANJUT';
+        document.getElementById('gpsText').textContent = 'GPS: Dijeda';
+      } else {
+        startTime = Date.now() - elapsedMs;
+        btn.textContent = 'JEDA';
+        document.getElementById('gpsText').textContent = isSimMode ? 'GPS: Mode Simulasi' : 'GPS: Merekam';
+      }
+    }
+
+    function stopAndSave() {
+      clearInterval(timerInterval);
+      clearInterval(simInterval);
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+
+      isTracking = false;
+      document.getElementById('ctrlIdle').style.display = 'flex';
+      document.getElementById('btnSim').style.display = 'block';
+      document.getElementById('ctrlActive').style.display = 'none';
+      document.getElementById('gpsText').textContent = 'GPS: Selesai';
+
+      if (trackPoints.length > 0 || elapsedMs > 3000) {
+        const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        list.unshift({
+          id: 'ACT-' + Date.now(),
+          date: new Date().toLocaleString('id-ID'),
+          sport: currentSport,
+          distanceKm: Number(totalDistanceKm.toFixed(2)),
+          durationText: formatTime(elapsedMs),
+          pace: document.getElementById('valPace').textContent,
+          calories: Number(document.getElementById('valCal').textContent),
+          points: trackPoints
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        renderHistory();
+      }
+    }
+
+    function exportGPX(id) {
+      const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const act = list.find(a => a.id === id);
+      if (!act || !act.points.length) return alert('Tidak ada titik GPS untuk diekspor.');
+
+      const trkpts = act.points.map(p => `<trkpt lat="${p.lat}" lon="${p.lng}"><time>${p.time}</time></trkpt>`).join('\n');
+      const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="StravaLite Offline">
+  <trk><name>${act.sport} - ${act.date}</name><trkseg>\n${trkpts}\n</trkseg></trk>
+</gpx>`;
+
+      const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${act.sport}_${act.id}.gpx`;
+      a.click();
+    }
+
+    function deleteAct(id) {
+      if (!confirm('Hapus riwayat ini?')) return;
+      const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]').filter(a => a.id !== id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const totalKm = list.reduce((s, a) => s + a.distanceKm, 0);
+      document.getElementById('totalSummary').textContent = `${list.length} sesi • ${totalKm.toFixed(2)} km`;
+
+      const container = document.getElementById('historyList');
+      if (!list.length) {
+        container.innerHTML = '<div style="color:var(--muted);font-size:13px;">Belum ada aktivitas tersimpan di HP ini.</div>';
+        return;
+      }
+
+      container.innerHTML = list.map(a => `
+        <div class="history-item">
+          <div>
+            <div class="h-title">${a.sport} • ${a.distanceKm} km</div>
+            <div class="h-sub">${a.date} • Waktu ${a.durationText} • Pace ${a.pace}/km • ${a.calories} kkal</div>
+          </div>
+          <div class="h-actions">
+            <button class="btn-mini" onclick="exportGPX('${a.id}')">GPX</button>
+            <button class="btn-mini del" onclick="deleteAct('${a.id}')">Hapus</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    drawRoute();
+    renderHistory();
+  </script>
+</body>
+</html>
